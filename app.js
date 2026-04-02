@@ -1,417 +1,180 @@
-document.addEventListener("DOMContentLoaded", function () {
+const express = require("express");
+const mysql = require("mysql2/promise");
+const path = require("path");
 
-  // =============================
-  // SHARED DEMO DATA
-  // =============================
-  const DEMO_SESSIONS = [
-    { id:"CSCI-101-01", dept:"CSCI", course:"101", title:"Intro to Programming", credits:3, prereq:"None", modality:"In-Person", max:30, instructor:"Dr. Rivera" },
-    { id:"CSCI-220-01", dept:"CSCI", course:"220", title:"Data Structures", credits:4, prereq:"CSCI 101", modality:"Hybrid", max:25, instructor:"Dr. Rivera" },
-    { id:"MATH-201-01", dept:"MATH", course:"201", title:"Statistics I", credits:3, prereq:"College Algebra", modality:"Online", max:40, instructor:"Prof. Chen" },
-    { id:"ENG-150-01",  dept:"ENG",  course:"150", title:"College Writing", credits:3, prereq:"None", modality:"In-Person", max:28, instructor:"Prof. Patel" }
-  ];
+const app = express();
+const PORT = 3000;
 
-  const DEMO_STUDENTS = [
-    { id:"S1001", password:"pass123", name:"Alex Johnson" },
-    { id:"S1002", password:"pass123", name:"Jamie Lee" },
-    { id:"S1003", password:"pass123", name:"Taylor Smith" }
-  ];
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
 
-  const DEMO_INSTRUCTORS = [
-    { id:"I2001", password:"teach123", name:"Dr. Rivera" },
-    { id:"I2002", password:"teach123", name:"Prof. Chen" },
-    { id:"I2003", password:"teach123", name:"Prof. Patel" }
-  ];
+const pool = mysql.createPool({
+  host: "info465dbnew.cpgdcb7fdlhl.us-east-1.rds.amazonaws.com",
+  user: "admin",
+  password: "iloveinfo465",
+  database: "summer_course_registration",
+  waitForConnections: true,
+  connectionLimit: 10
+});
 
-  // Persist enrollments across refresh
-  const STORAGE_KEY = "nvu_enrollments_v1";
-
-  function loadEnrollments() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return {};
-      const obj = JSON.parse(raw);
-      return (obj && typeof obj === "object") ? obj : {};
-    } catch {
-      return {};
-    }
+app.get("/api/test", async (req, res) => {
+  try {
+    const [rows] = await pool.execute("SELECT 'Connected to database' AS message");
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database connection failed" });
   }
+});
 
-  function saveEnrollments(enrollments) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(enrollments));
+app.get("/api/classes", async (req, res) => {
+  try {
+    const { department, instructor, courseNum } = req.query;
+
+    let sql = `
+      SELECT
+        s.section_id,
+        s.section_num,
+        s.term,
+        s.year,
+        s.modality,
+        s.max_students,
+        c.course_num,
+        c.course_name,
+        c.credit_hours,
+        i.first_name AS instructor_first,
+        i.last_name AS instructor_last,
+        d.department_name
+      FROM Section s
+      JOIN Course c ON s.course_id = c.course_id
+      JOIN Instructor i ON s.instructor_id = i.instructor_id
+      JOIN Department d ON c.department_id = d.department_id
+      WHERE s.term = 'Summer'
+    `;
+
+    const params = [];
+
+    if (department) {
+      sql += ` AND d.department_name LIKE ?`;
+      params.push(`%${department}%`);
+    }
+
+    if (instructor) {
+      sql += ` AND CONCAT(i.first_name, ' ', i.last_name) LIKE ?`;
+      params.push(`%${instructor}%`);
+    }
+
+    if (courseNum) {
+      sql += ` AND c.course_num LIKE ?`;
+      params.push(`%${courseNum}%`);
+    }
+
+    const [rows] = await pool.execute(sql, params);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not fetch classes" });
   }
+});
 
-  function ensureSeed(enrollments) {
-    if (Object.keys(enrollments).length > 0) return enrollments;
-    enrollments["CSCI-101-01"] = ["S1001"];
-    enrollments["MATH-201-01"] = ["S1002"];
-    saveEnrollments(enrollments);
-    return enrollments;
+app.get("/api/students/:studentId/classes", async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const [rows] = await pool.execute(
+      `
+      SELECT
+        c.course_num,
+        c.course_name,
+        s.section_id,
+        s.section_num,
+        s.term,
+        s.year,
+        s.modality
+      FROM Registration r
+      JOIN Section s ON r.section_id = s.section_id
+      JOIN Course c ON s.course_id = c.course_id
+      WHERE r.student_id = ?
+      `,
+      [studentId]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not fetch student classes" });
   }
+});
 
-  function enrollmentCount(enrollments, sessionId) {
-    return (enrollments[sessionId] || []).length;
+app.get("/api/instructors/:instructorId/sessions", async (req, res) => {
+  try {
+    const { instructorId } = req.params;
+
+    const [rows] = await pool.execute(
+      `
+      SELECT
+        s.section_id,
+        s.section_num,
+        s.term,
+        s.year,
+        s.modality,
+        c.course_num,
+        c.course_name
+      FROM Section s
+      JOIN Course c ON s.course_id = c.course_id
+      WHERE s.instructor_id = ?
+      `,
+      [instructorId]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not fetch instructor sessions" });
   }
+});
 
-  function isStudentEnrolled(enrollments, sessionId, studentId) {
-    return (enrollments[sessionId] || []).includes(studentId);
+app.post("/api/enroll", async (req, res) => {
+  try {
+    const { student_id, section_id } = req.body;
+
+    await pool.execute(
+      `INSERT INTO Registration (student_id, section_id) VALUES (?, ?)`,
+      [student_id, section_id]
+    );
+
+    res.json({ message: "Student enrolled successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Enrollment failed" });
   }
+});
 
-  function getStudentName(studentId) {
-    const s = DEMO_STUDENTS.find(x => x.id === studentId);
-    return s ? s.name : studentId;
+app.get("/api/sessions/:sectionId/students", async (req, res) => {
+  try {
+    const { sectionId } = req.params;
+
+    const [rows] = await pool.execute(
+      `
+      SELECT
+        st.student_id,
+        st.first_name,
+        st.last_name
+      FROM Registration r
+      JOIN Student st ON r.student_id = st.student_id
+      WHERE r.section_id = ?
+      `,
+      [sectionId]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not fetch enrolled students" });
   }
+});
 
-  // =============================
-  // PAGE: COURSE SEARCH
-  // =============================
-  function initCourseSearch() {
-    const searchBtn = document.getElementById("searchBtn");
-    const resultsWrap = document.getElementById("resultsWrap");
-    const resultsBody = document.getElementById("resultsBody");
-    const msg = document.getElementById("searchMsg");
-
-    if (!searchBtn || !resultsWrap || !resultsBody || !msg) return;
-
-    resultsWrap.hidden = true;
-    msg.textContent = "";
-
-    function renderResults(list) {
-      resultsBody.innerHTML = "";
-
-      if (list.length === 0) {
-        resultsBody.innerHTML = "<p>No courses found.</p>";
-        return;
-      }
-
-      list.forEach(course => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.style.marginTop = "12px";
-
-        card.innerHTML = `
-          <h3>${course.dept} ${course.course} — ${course.title}</h3>
-          <p><strong>Instructor:</strong> ${course.instructor}</p>
-          <p><strong>Credits:</strong> ${course.credits}</p>
-          <p><strong>Prerequisite:</strong> ${course.prereq}</p>
-          <p><strong>Modality:</strong> ${course.modality}</p>
-          <p><strong>Max Enrollment:</strong> ${course.max}</p>
-          <p><strong>Session ID:</strong> ${course.id}</p>
-        `;
-        resultsBody.appendChild(card);
-      });
-    }
-
-    function doSearch() {
-      const dept = (document.getElementById("dept")?.value || "").toUpperCase();
-      const courseNum = (document.getElementById("courseNum")?.value || "").trim();
-      const instructor = (document.getElementById("instructor")?.value || "").toLowerCase().trim();
-
-      const filtered = DEMO_SESSIONS.filter(c => {
-        const deptMatch = !dept || c.dept === dept;
-        const numMatch = !courseNum || c.course === courseNum;
-        const instrMatch = !instructor || c.instructor.toLowerCase().includes(instructor);
-        return deptMatch && numMatch && instrMatch;
-      });
-
-      resultsWrap.hidden = false;
-      msg.textContent = `Showing ${filtered.length} result(s).`;
-      renderResults(filtered);
-    }
-
-    searchBtn.addEventListener("click", doSearch);
-    ["courseNum", "instructor"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
-    });
-  }
-
-  // =============================
-  // PAGE: STUDENT REGISTRATION
-  // =============================
-  function initStudentRegistration() {
-    const loginCard = document.getElementById("studentLoginCard");
-    const dash = document.getElementById("studentDash");
-    const loginBtn = document.getElementById("studentLoginBtn");
-    const logoutBtn = document.getElementById("studentLogoutBtn");
-    const studentIdInput = document.getElementById("studentIdInput");
-    const studentPasswordInput = document.getElementById("studentPasswordInput");
-    const loginMsg = document.getElementById("studentLoginMsg");
-    const welcome = document.getElementById("studentWelcome");
-
-    const enrolledList = document.getElementById("enrolledList");
-    const sessionSelect = document.getElementById("sessionSelect");
-    const registerBtn = document.getElementById("registerBtn");
-    const registerMsg = document.getElementById("registerMsg");
-
-    if (!loginCard || !dash || !loginBtn || !logoutBtn || !studentIdInput || !studentPasswordInput) return;
-
-    let enrollments = ensureSeed(loadEnrollments());
-    let currentStudent = null;
-
-    dash.hidden = true;
-
-    function renderEnrolled() {
-      enrolledList.innerHTML = "";
-
-      const enrolledSessions = DEMO_SESSIONS.filter(sess =>
-        isStudentEnrolled(enrollments, sess.id, currentStudent.id)
-      );
-
-      if (enrolledSessions.length === 0) {
-        enrolledList.innerHTML = "<p>No enrolled sessions.</p>";
-        return;
-      }
-
-      enrolledSessions.forEach(sess => {
-        const count = enrollmentCount(enrollments, sess.id);
-        const div = document.createElement("div");
-        div.className = "card";
-        div.style.marginTop = "12px";
-        div.innerHTML = `
-          <h3>${sess.dept} ${sess.course} — ${sess.title}</h3>
-          <p><strong>Session:</strong> ${sess.id}</p>
-          <p><strong>Instructor:</strong> ${sess.instructor}</p>
-          <p><strong>Modality:</strong> ${sess.modality}</p>
-          <p><strong>Enrollment:</strong> ${count} / ${sess.max}</p>
-        `;
-        enrolledList.appendChild(div);
-      });
-    }
-
-    function renderSessionSelect() {
-      sessionSelect.innerHTML = "";
-
-      DEMO_SESSIONS.forEach(sess => {
-        const count = enrollmentCount(enrollments, sess.id);
-        const full = count >= sess.max;
-
-        const opt = document.createElement("option");
-        opt.value = sess.id;
-        opt.disabled = full;
-
-        const status = full ? "FULL" : `${count}/${sess.max}`;
-        opt.textContent = `${sess.id} — ${sess.dept} ${sess.course} (${sess.modality}) [${status}]`;
-
-        sessionSelect.appendChild(opt);
-      });
-    }
-
-    function showDashboard() {
-      loginCard.hidden = true;
-      dash.hidden = false;
-      welcome.textContent = `Logged in as ${currentStudent.name} (${currentStudent.id})`;
-      loginMsg.textContent = "";
-      registerMsg.textContent = "";
-
-      renderEnrolled();
-      renderSessionSelect();
-    }
-
-    function showLogin() {
-      dash.hidden = true;
-      loginCard.hidden = false;
-      studentIdInput.value = "";
-      studentPasswordInput.value = "";
-      loginMsg.textContent = "";
-      registerMsg.textContent = "";
-      currentStudent = null;
-    }
-
-    function handleLogin() {
-      const id = studentIdInput.value.trim();
-      const pass = studentPasswordInput.value.trim();
-
-      if (!id || !pass) {
-        loginMsg.textContent = "Please enter Student ID and Password.";
-        return;
-      }
-
-      const student = DEMO_STUDENTS.find(s => s.id === id && s.password === pass) || null;
-      if (!student) {
-        loginMsg.textContent = "Invalid Student ID or Password.";
-        return;
-      }
-
-      currentStudent = student;
-      showDashboard();
-    }
-
-    function handleRegister() {
-      registerMsg.textContent = "";
-
-      const sessionId = sessionSelect.value;
-      const sess = DEMO_SESSIONS.find(s => s.id === sessionId);
-      if (!sess) {
-        registerMsg.textContent = "Please select a session.";
-        return;
-      }
-
-      // Duplicate prevention
-      if (isStudentEnrolled(enrollments, sessionId, currentStudent.id)) {
-        registerMsg.textContent = "Already enrolled in this session (duplicate blocked).";
-        return;
-      }
-
-      // Max enrollment validation
-      const count = enrollmentCount(enrollments, sessionId);
-      if (count >= sess.max) {
-        registerMsg.textContent = "This session is full (max enrollment reached).";
-        renderSessionSelect();
-        return;
-      }
-
-      if (!enrollments[sessionId]) enrollments[sessionId] = [];
-      enrollments[sessionId].push(currentStudent.id);
-      saveEnrollments(enrollments);
-
-      registerMsg.textContent = `Registration successful for ${sessionId}.`;
-      renderEnrolled();
-      renderSessionSelect();
-    }
-
-    loginBtn.addEventListener("click", handleLogin);
-    logoutBtn.addEventListener("click", showLogin);
-    registerBtn.addEventListener("click", handleRegister);
-
-    studentPasswordInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") handleLogin();
-    });
-  }
-
-  // =============================
-  // PAGE: INSTRUCTOR SCHEDULE + SESSION ENROLLMENT
-  // =============================
-  function initInstructorSchedule() {
-    const loginCard = document.getElementById("instrLoginCard");
-    const dash = document.getElementById("instrDash");
-    const loginBtn = document.getElementById("instrLoginBtn");
-    const logoutBtn = document.getElementById("instrLogoutBtn");
-    const idInput = document.getElementById("instrIdInput");
-    const passInput = document.getElementById("instrPasswordInput");
-    const loginMsg = document.getElementById("instrLoginMsg");
-    const welcome = document.getElementById("instrWelcome");
-
-    const sessionsDiv = document.getElementById("instrSessions");
-    const enrollmentDiv = document.getElementById("sessionEnrollment");
-    const hint = document.getElementById("sessionHint");
-
-    if (!loginCard || !dash || !loginBtn || !logoutBtn || !idInput || !passInput) return;
-
-    let enrollments = ensureSeed(loadEnrollments());
-    let currentInstructor = null;
-
-    dash.hidden = true;
-
-    function assignedSessionsFor(instructorName) {
-      return DEMO_SESSIONS.filter(s => s.instructor === instructorName);
-    }
-
-    function renderAssignedSessions() {
-      sessionsDiv.innerHTML = "";
-      enrollmentDiv.innerHTML = "";
-      hint.textContent = "Select a session above to view enrolled students.";
-
-      const list = assignedSessionsFor(currentInstructor.name);
-
-      if (list.length === 0) {
-        sessionsDiv.innerHTML = "<p>No assigned sessions found.</p>";
-        return;
-      }
-
-      list.forEach(sess => {
-        const count = enrollmentCount(enrollments, sess.id);
-
-        const card = document.createElement("div");
-        card.className = "card";
-        card.style.marginTop = "12px";
-        card.style.cursor = "pointer";
-
-        card.innerHTML = `
-          <h3>${sess.id} — ${sess.title}</h3>
-          <p><strong>Course:</strong> ${sess.dept} ${sess.course}</p>
-          <p><strong>Modality:</strong> ${sess.modality}</p>
-          <p><strong>Enrollment:</strong> ${count} / ${sess.max}</p>
-          <p style="opacity:.85;"><em>Click to view enrolled students</em></p>
-        `;
-
-        card.addEventListener("click", () => renderEnrollment(sess.id, sess.title));
-        sessionsDiv.appendChild(card);
-      });
-    }
-
-    function renderEnrollment(sessionId, title) {
-      enrollmentDiv.innerHTML = "";
-      hint.textContent = `Viewing enrollment for ${sessionId} — ${title}`;
-
-      const studentIds = enrollments[sessionId] || [];
-
-      const box = document.createElement("div");
-      box.className = "card";
-      box.style.marginTop = "12px";
-
-      if (studentIds.length === 0) {
-        box.innerHTML = `<p>No students enrolled in ${sessionId}.</p>`;
-        enrollmentDiv.appendChild(box);
-        return;
-      }
-
-      const items = studentIds
-        .map(sid => `<li>${sid} — ${getStudentName(sid)}</li>`)
-        .join("");
-
-      box.innerHTML = `
-        <h3>Enrolled Students (${studentIds.length})</h3>
-        <ul>${items}</ul>
-      `;
-      enrollmentDiv.appendChild(box);
-    }
-
-    function showDashboard() {
-      loginCard.hidden = true;
-      dash.hidden = false;
-      welcome.textContent = `Logged in as ${currentInstructor.name} (${currentInstructor.id})`;
-      loginMsg.textContent = "";
-      renderAssignedSessions();
-    }
-
-    function showLogin() {
-      dash.hidden = true;
-      loginCard.hidden = false;
-      idInput.value = "";
-      passInput.value = "";
-      loginMsg.textContent = "";
-      currentInstructor = null;
-    }
-
-    function handleLogin() {
-      const id = idInput.value.trim();
-      const pass = passInput.value.trim();
-
-      if (!id || !pass) {
-        loginMsg.textContent = "Please enter Instructor ID and Password.";
-        return;
-      }
-
-      const instr = DEMO_INSTRUCTORS.find(i => i.id === id && i.password === pass) || null;
-      if (!instr) {
-        loginMsg.textContent = "Invalid Instructor ID or Password.";
-        return;
-      }
-
-      currentInstructor = instr;
-      showDashboard();
-    }
-
-    loginBtn.addEventListener("click", handleLogin);
-    logoutBtn.addEventListener("click", showLogin);
-
-    passInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") handleLogin();
-    });
-  }
-
-  // Run all (each one only activates if on that page)
-  initCourseSearch();
-  initStudentRegistration();
-  initInstructorSchedule();
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
 });
