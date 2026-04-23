@@ -174,6 +174,63 @@ app.get("/api/sessions/:sectionId/students", async (req, res) => {
     res.status(500).json({ error: "Could not fetch enrolled students" });
   }
 });
+app.get("/api/sessions/:sectionId/students", async (req, res) => {
+  try {
+    const { sectionId } = req.params;
+
+    const [rows] = await pool.execute(
+      `
+      SELECT
+        st.student_id,
+        st.first_name,
+        st.last_name
+      FROM Registration r
+      JOIN Student st ON r.student_id = st.student_id
+      WHERE r.section_id = ?
+      `,
+      [sectionId]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not fetch enrolled students" });
+  }
+});
+
+app.post("/api/login", async (req, res) => {
+  try {
+    const { studentId, password } = req.body;
+
+    const [rows] = await pool.execute(
+      `SELECT * FROM Student WHERE student_id = ?`,
+      [studentId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: "Invalid login" });
+    }
+
+    const student = rows[0];
+
+    if (password !== "123") {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+
+    res.json({
+      message: "Login successful",
+      student_id: student.student_id,
+      first_name: student.first_name
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Login failed" });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
