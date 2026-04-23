@@ -7,7 +7,7 @@ const PORT = 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public2")));
 
 const pool = mysql.createPool({
   host: "info465dbnew.cpgdcb7fdlhl.us-east-1.rds.amazonaws.com",
