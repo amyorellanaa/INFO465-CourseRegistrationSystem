@@ -175,6 +175,37 @@ app.get("/api/sessions/:sectionId/students", async (req, res) => {
   }
 });
 
+app.post("/api/login", async (req, res) => {
+  try {
+    const { studentId, password } = req.body;
+
+    const [rows] = await pool.execute(
+      `SELECT * FROM Student WHERE student_id = ?`,
+      [studentId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: "Invalid login" });
+    }
+
+    const student = rows[0];
+
+    if (password !== "123") {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+
+    res.json({
+      message: "Login successful",
+      student_id: student.student_id,
+      first_name: student.first_name
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Login failed" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
+

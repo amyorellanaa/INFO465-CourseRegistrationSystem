@@ -576,6 +576,7 @@
       <label class="label" for="semesterSelect">Semester</label>
       <select id="semesterSelect" class="field" style="max-width:410px">
         <option value="">Select Semester</option>
+        <option value="Summer 2026">Summer 2026</option>
         <option value="Fall 2026">Fall 2026</option>
         <option value="Spring 2027">Spring 2027</option>
         <option value="Summer 2027">Summer 2027</option>
@@ -683,46 +684,44 @@
     const savedBasket = JSON.parse(localStorage.getItem(STORAGE_KEYS.basket) || "[]");
     const savedWaitlist = JSON.parse(localStorage.getItem(STORAGE_KEYS.waitlist) || "[]");
 
-    const courseData = [
-      { id:"BIO101-005-FALL2026", semester:"Fall 2026", department:"BIO", courseNumber:"101", courseCode:"BIO 101", section:"005", title:"General Biology I", instructor:"Martinez, Sofia", days:["Mon","Wed","Fri"], daysLabel:"Mon / Wed / Fri", timeLabel:"8:00 AM - 8:50 AM", startMinutes:480, endMinutes:530, location:"Science Hall 101", credits:4, prereq:null, mode:"In Person", enrolled:36, capacity:36, waitlistEnabled:true, waitlistCount:0, maxWaitlist:10 },
-      { id:"BIO102-002-FALL2026", semester:"Fall 2026", department:"BIO", courseNumber:"102", courseCode:"BIO 102", section:"002", title:"General Biology II", instructor:"Campbell, Ethan", days:["Mon","Wed","Fri"], daysLabel:"Mon / Wed / Fri", timeLabel:"11:00 AM - 11:50 AM", startMinutes:660, endMinutes:710, location:"Science Hall 103", credits:4, prereq:"BIO 101", mode:"In Person", enrolled:26, capacity:36, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"CST110-003-FALL2026", semester:"Fall 2026", department:"CST", courseNumber:"110", courseCode:"CST 110", section:"003", title:"Business Communication", instructor:"Morgan, Daniel", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"12:30 PM - 1:45 PM", startMinutes:750, endMinutes:825, location:"Liberal Arts 207", credits:3, prereq:null, mode:"Hybrid", enrolled:25, capacity:25, waitlistEnabled:true, waitlistCount:0, maxWaitlist:12 },
-      { id:"CHEM101-006-FALL2026", semester:"Fall 2026", department:"CHEM", courseNumber:"101", courseCode:"CHEM 101", section:"006", title:"General Chemistry I", instructor:"Nguyen, Lina", days:["Mon","Wed","Fri"], daysLabel:"Mon / Wed / Fri", timeLabel:"9:00 AM - 9:50 AM", startMinutes:540, endMinutes:590, location:"Chemistry Building 120", credits:4, prereq:null, mode:"In Person", enrolled:30, capacity:32, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"CHEM102-003-FALL2026", semester:"Fall 2026", department:"CHEM", courseNumber:"102", courseCode:"CHEM 102", section:"003", title:"General Chemistry II", instructor:"Singh, Rohan", days:["Mon","Wed","Fri"], daysLabel:"Mon / Wed / Fri", timeLabel:"12:00 PM - 12:50 PM", startMinutes:720, endMinutes:770, location:"Chemistry Building 118", credits:4, prereq:"CHEM 101", mode:"In Person", enrolled:24, capacity:32, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"ACC201-001-FALL2026", semester:"Fall 2026", department:"ACC", courseNumber:"201", courseCode:"ACC 201", section:"001", title:"Financial Accounting", instructor:"Patel, Asha", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"1:00 PM - 2:15 PM", startMinutes:780, endMinutes:855, location:"Business Hall 210", credits:3, prereq:null, mode:"In Person", enrolled:28, capacity:30, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"ACC202-001-FALL2026", semester:"Fall 2026", department:"ACC", courseNumber:"202", courseCode:"ACC 202", section:"001", title:"Managerial Accounting", instructor:"Lopez, Marissa", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"10:00 AM - 11:15 AM", startMinutes:600, endMinutes:675, location:"Business Hall 212", credits:3, prereq:"ACC 201", mode:"In Person", enrolled:30, capacity:30, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"MATH221-002-FALL2026", semester:"Fall 2026", department:"MATH", courseNumber:"221", courseCode:"MATH 221", section:"002", title:"Calculus I", instructor:"Reed, Hannah", days:["Mon","Wed","Fri"], daysLabel:"Mon / Wed / Fri", timeLabel:"10:00 AM - 10:50 AM", startMinutes:600, endMinutes:650, location:"Math Center 110", credits:4, prereq:"MATH 110", mode:"In Person", enrolled:31, capacity:32, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"MATH222-001-FALL2026", semester:"Fall 2026", department:"MATH", courseNumber:"222", courseCode:"MATH 222", section:"001", title:"Calculus II", instructor:"Reed, Hannah", days:["Mon","Wed","Fri"], daysLabel:"Mon / Wed / Fri", timeLabel:"11:00 AM - 11:50 AM", startMinutes:660, endMinutes:710, location:"Math Center 114", credits:4, prereq:"MATH 221", mode:"In Person", enrolled:20, capacity:28, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"ENG210-004-FALL2026", semester:"Fall 2026", department:"ENG", courseNumber:"210", courseCode:"ENG 210", section:"004", title:"Writing for Media", instructor:"Price, Jordan", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"2:00 PM - 3:15 PM", startMinutes:840, endMinutes:915, location:"Liberal Arts 110", credits:3, prereq:"ENG 101", mode:"Hybrid", enrolled:20, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"HIST101-001-FALL2026", semester:"Fall 2026", department:"HIST", courseNumber:"101", courseCode:"HIST 101", section:"001", title:"World Civilizations", instructor:"Owens, Faith", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"9:30 AM - 10:45 AM", startMinutes:570, endMinutes:645, location:"Heritage Hall 201", credits:3, prereq:null, mode:"In Person", enrolled:27, capacity:28, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"PSY101-002-FALL2026", semester:"Fall 2026", department:"PSY", courseNumber:"101", courseCode:"PSY 101", section:"002", title:"Introduction to Psychology", instructor:"Kim, Elena", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"3:30 PM - 4:45 PM", startMinutes:930, endMinutes:1005, location:"Social Sciences 118", credits:3, prereq:null, mode:"In Person", enrolled:35, capacity:36, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"BIO201-001-FALL2026", semester:"Fall 2026", department:"BIO", courseNumber:"201", courseCode:"BIO 201", section:"001", title:"Genetics", instructor:"Bennett, Claire", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"11:00 AM - 12:15 PM", startMinutes:660, endMinutes:735, location:"Science Hall 220", credits:4, prereq:"BIO 102", mode:"In Person", enrolled:18, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"CST210-001-FALL2026", semester:"Fall 2026", department:"CST", courseNumber:"210", courseCode:"CST 210", section:"001", title:"Public Speaking", instructor:"Harper, Naomi", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"1:00 PM - 2:15 PM", startMinutes:780, endMinutes:855, location:"Liberal Arts 212", credits:3, prereq:"CST 110", mode:"Hybrid", enrolled:22, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"ART105-003-FALL2026", semester:"Fall 2026", department:"ART", courseNumber:"105", courseCode:"ART 105", section:"003", title:"Digital Design Basics", instructor:"West, Tyler", days:["Fri"], daysLabel:"Fri", timeLabel:"1:00 PM - 3:40 PM", startMinutes:780, endMinutes:940, location:"Arts Center 105", credits:3, prereq:null, mode:"In Person", enrolled:18, capacity:20, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"SOC101-001-FALL2026", semester:"Fall 2026", department:"SOC", courseNumber:"101", courseCode:"SOC 101", section:"001", title:"Introduction to Sociology", instructor:"Turner, Grace", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"3:30 PM - 4:45 PM", startMinutes:930, endMinutes:1005, location:"Social Sciences 201", credits:3, prereq:null, mode:"Hybrid", enrolled:30, capacity:30, waitlistEnabled:true, waitlistCount:0, maxWaitlist:8 },
-      { id:"BUS310-001-FALL2026", semester:"Fall 2026", department:"BUS", courseNumber:"310", courseCode:"BUS 310", section:"001", title:"Business Analytics", instructor:"Chen, Victor", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"10:30 AM - 11:45 AM", startMinutes:630, endMinutes:705, location:"Business Hall 320", credits:3, prereq:"ACC 201", mode:"In Person", enrolled:24, capacity:26, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"CHEM101-009-FALL2026", semester:"Fall 2026", department:"CHEM", courseNumber:"101", courseCode:"CHEM 101", section:"009", title:"General Chemistry I", instructor:"Howard, Emily", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"8:00 AM - 9:15 AM", startMinutes:480, endMinutes:555, location:"Chemistry Building 101", credits:4, prereq:null, mode:"In Person", enrolled:32, capacity:32, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
+    let courseData = [];
 
-      { id:"BIO220-001-SPRING2027", semester:"Spring 2027", department:"BIO", courseNumber:"220", courseCode:"BIO 220", section:"001", title:"Microbiology", instructor:"Soto, Isabel", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"9:30 AM - 10:45 AM", startMinutes:570, endMinutes:645, location:"Science Hall 204", credits:4, prereq:"BIO 102", mode:"In Person", enrolled:20, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"BIO230-002-SPRING2027", semester:"Spring 2027", department:"BIO", courseNumber:"230", courseCode:"BIO 230", section:"002", title:"Ecology", instructor:"Tran, Melissa", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"1:00 PM - 2:15 PM", startMinutes:780, endMinutes:855, location:"Science Hall 215", credits:4, prereq:"BIO 101", mode:"In Person", enrolled:24, capacity:24, waitlistEnabled:true, waitlistCount:0, maxWaitlist:6 },
-      { id:"CHEM210-001-SPRING2027", semester:"Spring 2027", department:"CHEM", courseNumber:"210", courseCode:"CHEM 210", section:"001", title:"Organic Chemistry I", instructor:"Baker, James", days:["Mon","Wed","Fri"], daysLabel:"Mon / Wed / Fri", timeLabel:"11:00 AM - 11:50 AM", startMinutes:660, endMinutes:710, location:"Chemistry Building 220", credits:4, prereq:"CHEM 102", mode:"In Person", enrolled:26, capacity:28, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"CHEM211-001-SPRING2027", semester:"Spring 2027", department:"CHEM", courseNumber:"211", courseCode:"CHEM 211", section:"001", title:"Organic Chemistry Lab", instructor:"Baker, James", days:["Thu"], daysLabel:"Thu", timeLabel:"2:00 PM - 4:50 PM", startMinutes:840, endMinutes:1010, location:"Chemistry Lab 18", credits:2, prereq:"CHEM 102", mode:"In Person", enrolled:18, capacity:20, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"CST220-003-SPRING2027", semester:"Spring 2027", department:"CST", courseNumber:"220", courseCode:"CST 220", section:"003", title:"Professional Writing", instructor:"Brooks, Nina", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"9:30 AM - 10:45 AM", startMinutes:570, endMinutes:645, location:"Liberal Arts 301", credits:3, prereq:"CST 110", mode:"Hybrid", enrolled:22, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"MATH310-001-SPRING2027", semester:"Spring 2027", department:"MATH", courseNumber:"310", courseCode:"MATH 310", section:"001", title:"Statistics", instructor:"Young, Kevin", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"1:00 PM - 2:15 PM", startMinutes:780, endMinutes:855, location:"Math Center 215", credits:3, prereq:"MATH 221", mode:"In Person", enrolled:25, capacity:28, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"BUS320-001-SPRING2027", semester:"Spring 2027", department:"BUS", courseNumber:"320", courseCode:"BUS 320", section:"001", title:"Operations Management", instructor:"Foster, Alan", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"11:00 AM - 12:15 PM", startMinutes:660, endMinutes:735, location:"Business Hall 305", credits:3, prereq:"ACC 201", mode:"In Person", enrolled:28, capacity:30, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"ACC310-002-SPRING2027", semester:"Spring 2027", department:"ACC", courseNumber:"310", courseCode:"ACC 310", section:"002", title:"Intermediate Accounting", instructor:"Miller, Dana", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"3:30 PM - 4:45 PM", startMinutes:930, endMinutes:1005, location:"Business Hall 204", credits:3, prereq:"ACC 202", mode:"In Person", enrolled:30, capacity:30, waitlistEnabled:true, waitlistCount:0, maxWaitlist:5 },
-      { id:"ENG320-001-SPRING2027", semester:"Spring 2027", department:"ENG", courseNumber:"320", courseCode:"ENG 320", section:"001", title:"Technical Writing", instructor:"Ward, Elise", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"3:30 PM - 4:45 PM", startMinutes:930, endMinutes:1005, location:"Liberal Arts 108", credits:3, prereq:"ENG 101", mode:"Hybrid", enrolled:19, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"PSY210-001-SPRING2027", semester:"Spring 2027", department:"PSY", courseNumber:"210", courseCode:"PSY 210", section:"001", title:"Developmental Psychology", instructor:"Ramos, Sofia", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"10:00 AM - 11:15 AM", startMinutes:600, endMinutes:675, location:"Social Sciences 114", credits:3, prereq:"PSY 101", mode:"In Person", enrolled:27, capacity:28, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
+async function loadClasses() {
+  try {
+    const res = await fetch("/api/classes");
+    const data = await res.json();
 
-      { id:"ENG150-001-SUMMER2027", semester:"Summer 2027", department:"ENG", courseNumber:"150", courseCode:"ENG 150", section:"001", title:"College Writing Workshop", instructor:"Cole, Avery", days:["Mon","Tue","Wed","Thu"], daysLabel:"Mon / Tue / Wed / Thu", timeLabel:"9:00 AM - 10:40 AM", startMinutes:540, endMinutes:640, location:"Liberal Arts 102", credits:3, prereq:"ENG 101", mode:"Hybrid", enrolled:18, capacity:20, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"BUS205-001-SUMMER2027", semester:"Summer 2027", department:"BUS", courseNumber:"205", courseCode:"BUS 205", section:"001", title:"Business Law", instructor:"Diaz, Mateo", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"6:00 PM - 8:30 PM", startMinutes:1080, endMinutes:1230, location:"Business Hall 101", credits:3, prereq:null, mode:"In Person", enrolled:20, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"CST250-001-SUMMER2027", semester:"Summer 2027", department:"CST", courseNumber:"250", courseCode:"CST 250", section:"001", title:"Workplace Communication", instructor:"Stone, Lila", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"5:30 PM - 7:10 PM", startMinutes:1050, endMinutes:1150, location:"Liberal Arts 205", credits:3, prereq:"CST 110", mode:"Hybrid", enrolled:24, capacity:24, waitlistEnabled:true, waitlistCount:0, maxWaitlist:8 },
-      { id:"MATH205-001-SUMMER2027", semester:"Summer 2027", department:"MATH", courseNumber:"205", courseCode:"MATH 205", section:"001", title:"Finite Mathematics", instructor:"Ng, Rachel", days:["Mon","Tue","Wed","Thu"], daysLabel:"Mon / Tue / Wed / Thu", timeLabel:"11:00 AM - 12:20 PM", startMinutes:660, endMinutes:740, location:"Math Center 103", credits:3, prereq:"MATH 110", mode:"In Person", enrolled:16, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"BIO150-001-SUMMER2027", semester:"Summer 2027", department:"BIO", courseNumber:"150", courseCode:"BIO 150", section:"001", title:"Human Anatomy", instructor:"Ali, Samira", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"1:00 PM - 3:30 PM", startMinutes:780, endMinutes:930, location:"Science Hall 120", credits:4, prereq:"BIO 101", mode:"In Person", enrolled:22, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"CHEM150-001-SUMMER2027", semester:"Summer 2027", department:"CHEM", courseNumber:"150", courseCode:"CHEM 150", section:"001", title:"Introductory Chemistry", instructor:"Moore, Talia", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"1:00 PM - 3:30 PM", startMinutes:780, endMinutes:930, location:"Chemistry Building 104", credits:4, prereq:null, mode:"In Person", enrolled:24, capacity:24, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"ACC150-001-SUMMER2027", semester:"Summer 2027", department:"ACC", courseNumber:"150", courseCode:"ACC 150", section:"001", title:"Personal Finance", instructor:"Clark, Jamie", days:["Tue","Thu"], daysLabel:"Tue / Thu", timeLabel:"10:00 AM - 11:40 AM", startMinutes:600, endMinutes:700, location:"Business Hall 115", credits:3, prereq:null, mode:"Hybrid", enrolled:19, capacity:22, waitlistEnabled:false, waitlistCount:0, maxWaitlist:0 },
-      { id:"SOC210-001-SUMMER2027", semester:"Summer 2027", department:"SOC", courseNumber:"210", courseCode:"SOC 210", section:"001", title:"Social Problems", instructor:"Hill, Jordan", days:["Mon","Wed"], daysLabel:"Mon / Wed", timeLabel:"5:30 PM - 7:10 PM", startMinutes:1050, endMinutes:1150, location:"Social Sciences 210", credits:3, prereq:"SOC 101", mode:"Hybrid", enrolled:20, capacity:20, waitlistEnabled:true, waitlistCount:0, maxWaitlist:6 }
-    ];
+    courseData = data.map(c => ({
+      id: c.section_id,
+      semester: "Summer 2026",
+      department: c.department_name,
+      courseNumber: c.course_num,
+      courseCode: c.course_num,
+      section: c.section_num,
+      title: c.course_name,
+      instructor: c.instructor_first + " " + c.instructor_last,
+      days: ["Mon"],
+      daysLabel: "TBD",
+      timeLabel: "TBD",
+      startMinutes: 0,
+      endMinutes: 0,
+      location: "TBD",
+      credits: c.credit_hours,
+      prereq: null,
+      mode: c.modality,
+      enrolled: 0,
+      capacity: c.max_students,
+      waitlistEnabled: false,
+      waitlistCount: 0,
+      maxWaitlist: 0
+    }));
+
+    console.log(courseData);
+
+  } catch (err) {
+    console.error(err);
+  }
+}
 
     let currentPage = 1;
     const rowsPerPage = 5;
@@ -1162,6 +1161,12 @@
     }
 
     updateBasketUI();
-  </script>
+  
+loadClasses().then(() => {
+  semesterSelect.value = "Summer 2026";
+  filtersCard.classList.remove("hide");
+  performSearch();
+});
+</script>
 </body>
 </html>
