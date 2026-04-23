@@ -692,7 +692,7 @@ async function loadClasses() {
     const data = await res.json();
 
     courseData = data.map(c => ({
-      id: c.section_id,
+      id: String(c.section_id),
       semester: "Summer 2026",
       department: c.department_name,
       courseNumber: c.course_num,
