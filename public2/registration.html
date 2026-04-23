@@ -438,39 +438,56 @@
       renderRegistrationPage();
     }
 
-    function confirmRegistration() {
-      hideAlert();
+    async function confirmRegistration() {
+  hideAlert();
 
-      const basket = getBasketCourses();
-      const registered = getRegisteredCourses();
+  const basket = getBasketCourses();
+  const studentId = localStorage.getItem("studentId"); // make sure login sets this
 
-      if (!basket.length) {
-        showAlert("Your basket is empty. Add classes before completing registration.");
-        return;
+  if (!basket.length) {
+    showAlert("Your basket is empty. Add classes before completing registration.");
+    return;
+  }
+
+  if (!studentId) {
+    showAlert("You must be logged in to register.");
+    return;
+  }
+
+  const confirmed = confirm("Complete registration for the selected courses?");
+  if (!confirmed) return;
+
+  try {
+    for (const course of basket) {
+      const response = await fetch("/api/enroll", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          student_id: studentId,
+          section_id: course.id
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to enroll in a course");
       }
-
-      const registeredIds = new Set(registered.map(course => course.id));
-      const duplicateCourses = basket.filter(course => registeredIds.has(course.id));
-
-      if (duplicateCourses.length) {
-        showAlert("One or more selected classes are already in your schedule. Remove duplicates and try again.");
-        return;
-      }
-
-      const combinedCredits = sumCredits(registered) + sumCredits(basket);
-      if (combinedCredits > MAX_CREDITS) {
-        showAlert(`You cannot register because your total would be ${combinedCredits} credits. The maximum allowed is ${MAX_CREDITS}.`);
-        return;
-      }
-
-      const confirmed = confirm("Complete registration for the selected courses?");
-      if (!confirmed) return;
-
-      const updatedRegistered = [...registered, ...basket];
-      saveRegisteredCourses(updatedRegistered);
-      saveBasketCourses([]);
-      renderRegistrationPage();
     }
+
+    saveBasketCourses([]);
+
+    renderRegistrationPage();
+
+    alert("Registration successful!");
+
+  } catch (error) {
+    console.error(error);
+    showAlert(error.message || "Registration failed.");
+  }
+}
 
     function handleSignOut() {
       const confirmed = confirm("Are you sure you want to sign out?");

@@ -335,7 +335,7 @@
 
             <div class="error-box" id="errorBox">
               <h3>Login failed.</h3>
-              <p>The ID/email or password you entered is incorrect. Please try again.</p>
+              <p id="errorMessage">The ID/email or password you entered is incorrect. Please try again.</p>
             </div>
 
             <div class="login-form">
@@ -363,7 +363,7 @@
                 </div>
 
                 <div class="login-row">
-                  <button class="btn btn-gold" type="submit">Login</button>
+                  <button class="btn btn-gold" type="submit" id="loginBtn">Login</button>
                   <button class="btn btn-link" type="button" id="forgotBtn">Forgot your password?</button>
                 </div>
               </form>
@@ -371,9 +371,9 @@
               <a href="index.html" class="return-link">← Return to NVU eServices</a>
 
               <div class="demo-box">
-                <strong>Hardcoded demo login:</strong><br>
-                Student eID or Email: <strong>nvu123456</strong> or <strong>student@nvu.edu</strong><br>
-                Password: <strong>NvuStudent123</strong>
+                <strong>Database login:</strong><br>
+                Enter a valid student ID from your Student table and the password <strong>123</strong>.<br>
+                Example: if your backend student login route is still using the demo password, all students use <strong>123</strong>.
               </div>
             </div>
           </div>
@@ -390,36 +390,74 @@
     const studentPasswordInput = document.getElementById("studentPassword");
     const signInBox = document.getElementById("signInBox");
     const errorBox = document.getElementById("errorBox");
+    const errorMessage = document.getElementById("errorMessage");
     const forgotBtn = document.getElementById("forgotBtn");
-
-    const validIds = ["nvu123456", "student@nvu.edu"];
-    const validPassword = "NvuStudent123";
-
-    loginForm.addEventListener("submit", function (event) {
-      event.preventDefault();
-
-      const enteredId = studentIdInput.value.trim().toLowerCase();
-      const enteredPassword = studentPasswordInput.value.trim();
-
-      const validLogin =
-        validIds.includes(enteredId) &&
-        enteredPassword === validPassword;
-
-      if (validLogin) {
-        localStorage.setItem("isStudent", "true");
-        localStorage.setItem("studentLoggedIn", "true");
-        localStorage.setItem("studentUser", enteredId);
-        window.location.href = "student-dashboard.html";
-      } else {
-        signInBox.style.display = "none";
-        errorBox.classList.add("show");
-      }
-    });
+    const loginBtn = document.getElementById("loginBtn");
 
     function resetErrorState() {
       errorBox.classList.remove("show");
       signInBox.style.display = "block";
+      errorMessage.textContent = "The ID/email or password you entered is incorrect. Please try again.";
     }
+
+    function showError(message) {
+      signInBox.style.display = "none";
+      errorMessage.textContent = message;
+      errorBox.classList.add("show");
+    }
+
+    loginForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      const enteredId = studentIdInput.value.trim();
+      const enteredPassword = studentPasswordInput.value.trim();
+
+      resetErrorState();
+
+      if (!enteredId || !enteredPassword) {
+        showError("Please enter both your student ID/email and password.");
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Logging in...";
+
+      try {
+        const response = await fetch("/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            studentId: enteredId,
+            password: enteredPassword
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          localStorage.setItem("isStudent", "true");
+          localStorage.setItem("studentLoggedIn", "true");
+          localStorage.setItem("studentUser", data.student_id || enteredID);
+          localStorage.setItem("studentId", data.student_id || enteredId);
+
+          if (data.first_name) {
+            localStorage.setItem("studentFirstName", data.first_name);
+          }
+
+          window.location.href = "student-dashboard.html";
+        } else {
+          showError(data.error || "The ID/email or password you entered is incorrect. Please try again.");
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        showError("Unable to connect to the server. Please try again.");
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Login";
+      }
+    });
 
     studentIdInput.addEventListener("input", resetErrorState);
     studentPasswordInput.addEventListener("input", resetErrorState);
