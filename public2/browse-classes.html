@@ -913,7 +913,7 @@ async function loadClasses() {
     function handleActionClick(event) {
       const courseId = event.currentTarget.dataset.actionCourse;
       const actionType = event.currentTarget.dataset.actionType;
-      const course = courseData.find(c => c.id === courseId);
+      const course = courseData.find(c => String(c.id) === String(courseId));
       if (!course) return;
 
       if (actionType === "add") {
@@ -923,69 +923,31 @@ async function loadClasses() {
       }
     }
 
-    function tryAddCourse(course) {
-      const duplicateCheck = isDuplicateCourse(course);
-      if (duplicateCheck) {
-        showToast("warn", "Duplicate course", `${course.courseCode} is already selected in your basket, waitlist, or registered schedule.`);
-        return;
-      }
+  function tryAddCourse(course) {
+  if (isDuplicateCourse(course)) {
+    showToast("warn", "Already selected", "This class is already in your basket, waitlist, or registered courses.");
+    return;
+  }
 
-      const prereqIssue = getPrereqIssue(course);
-      if (prereqIssue) {
-        showToast("error", prereqIssue.title, prereqIssue.message);
-        return;
-      }
+  const prereqIssue = getPrereqIssue(course);
+  if (prereqIssue) {
+    showToast("error", prereqIssue.title, prereqIssue.message);
+    return;
+  }
 
-      const timeConflict = getTimeConflict(course);
-      if (timeConflict) {
-        showToast("error", "Time conflict", `${course.courseCode} conflicts with ${timeConflict.courseCode} section ${timeConflict.section}.`);
-        return;
-      }
+  const conflict = getTimeConflict(course);
+  if (conflict) {
+    showToast("error", "Time conflict", `${course.courseCode} conflicts with ${conflict.courseCode || conflict.code}.`);
+    return;
+  }
 
-      if (course.enrolled >= course.capacity) {
-        if (course.waitlistEnabled && course.waitlistCount < course.maxWaitlist) {
-          showToast("warn", "Class is full", `${course.courseCode} is currently full. You can join the waitlist instead.`);
-        } else {
-          showToast("error", "Class full", `${course.courseCode} is full and does not have a waitlist.`);
-        }
-        return;
-      }
+  basket.push(normalizeCourse(course));
+  persistSelections();
+  updateBasketUI();
+  renderResults();
 
-      basket.push(normalizeCourse(course));
-      persistSelections();
-      updateBasketUI();
-      renderResults();
-      showToast("success", "Added to basket", `${course.courseCode} · ${course.title}`);
-    }
-
-    function tryWaitlistCourse(course) {
-      if (isDuplicateCourse(course)) {
-        showToast("warn", "Already selected", `${course.courseCode} is already in your basket, waitlist, or registered schedule.`);
-        return;
-      }
-
-      const prereqIssue = getPrereqIssue(course);
-      if (prereqIssue) {
-        showToast("error", prereqIssue.title, prereqIssue.message);
-        return;
-      }
-
-      const timeConflict = getTimeConflict(course);
-      if (timeConflict) {
-        showToast("error", "Time conflict", `${course.courseCode} conflicts with ${timeConflict.courseCode} section ${timeConflict.section}.`);
-        return;
-      }
-
-      if (!course.waitlistEnabled || course.waitlistCount >= course.maxWaitlist) {
-        showToast("error", "Waitlist unavailable", `${course.courseCode} does not have an available waitlist.`);
-        return;
-      }
-
-      waitlisted.push(normalizeCourse(course));
-      persistSelections();
-      renderResults();
-      showToast("success", "Waitlist joined", `You're on the waitlist for ${course.courseCode} section ${course.section}.`);
-    }
+  showToast("success", "Added to basket", `${course.courseCode} · ${course.title}`);
+}
 
     function normalizeCourse(course) {
       return {
@@ -1165,6 +1127,7 @@ async function loadClasses() {
 loadClasses().then(() => {
   semesterSelect.value = "Summer 2026";
   filtersCard.classList.remove("hide");
+  fillDepartments();
   performSearch();
 });
 </script>
